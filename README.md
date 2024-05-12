@@ -1,6 +1,6 @@
 ![Screenshot](20240427_173329[1].png)
 
-Click [here](https://www.tindie.com/products/boredbuilder/binary-clock-v2) to get one!
+# Click [here](https://www.tindie.com/products/boredbuilder/binary-clock-v2) to get one!
 
 # What makes it so special?
 
