@@ -50,8 +50,16 @@ const byte secondsPin8 = 7;
 
 #define BUTTON_PIN 42
 Button2 button;
-const byte photoPin = 1; //photoresistor pin
-Smoothed <float> mySensor; 
+
+const byte photoPin = 1;  //photoresistor pin
+#define SENSOR_PIN photoPin
+Smoothed<float> mySensor;
+int brightVal;
+int brightVal2;
+int pChannelMos = 36;
+const int freq = 1000;
+const int resolution = 12;
+
 
 int hourOffset;
 
@@ -84,35 +92,33 @@ void setup() {
   // Placeholder for the timezone offset variable
   // int utcOffsetInSeconds = getParam("customfieldid") * -3600;
 
-  std::vector<const char*> menu = { "wifi" };
-  wm.setMenu(menu);
+  std::vector<const char*> menu = { "wifi" }; //Selection for web
+  wm.setMenu(menu); //Menu
 
   // set dark theme
-  wm.setClass("invert");
+  wm.setClass("invert"); //dark mode :b
 
-  mySensor.begin(SMOOTHED_AVERAGE, 20);	
+  mySensor.begin(SMOOTHED_AVERAGE, 8); //Setup the smoothing algo
 
-  wm.setConnectTimeout(10);
+  wm.setConnectTimeout(10); // Time out for the start connection
 
-  res = wm.autoConnect("Binary_Clock");  // anonymous ap
+  res = wm.autoConnect("Binary_Clock");  // anonymous ap/ set the name of the clock
   if (!res) {
-    Serial.println("Failed to connect");
+    Serial.println("Failed to connect"); //Failed to connect
     // ESP.restart();
   } else {
     //if you get here you have connected to the WiFi
-    Serial.println("connected...yeey :)");
+    Serial.println("connected...yeey :)"); // Connected succesfully
   }
 
   hourOffset = preferences.getInt("timeZone", 0);
   //NPT Sever Setup
-  timeClient.begin();
+  timeClient.begin(); //begin the ntp Client
   //timeClient.setTimeOffset(utcOffsetInSeconds);
   //printLocalTime();
   timeClient.setTimeOffset(hourOffset * -3600);
   Serial.println(hourOffset);
   //Brightness PWM Pin gate control of P-Channel mosfet
-  ledcSetup(0, 1000, 12);
-  ledcAttachPin(36, 0);
 
   //Button PIN Assignments(s)
   button.begin(BUTTON_PIN);
@@ -139,6 +145,8 @@ void setup() {
   pinMode(secondsPin2, OUTPUT);
   pinMode(secondsPin4, OUTPUT);
   pinMode(secondsPin8, OUTPUT);
+  ledcAttach(pChannelMos, freq, resolution);
+  mySensor.clear();
 }
 
 
@@ -158,10 +166,9 @@ void saveParamCallback() {
   hourOffset = getParam("customfieldid").toInt();
   Serial.println(hourOffset);
   preferences.putInt("timeZone", hourOffset);
-
 }
 
-/*
+
 void serialCOM() {
 
   int Hours = timeClient.getHours();
@@ -175,25 +182,68 @@ void serialCOM() {
   Serial.println(Seconds);
   Serial.println();
 }
-*/
+
 //------Brightness Control---------
 
 void brightness() {
-  float brightVal;
-  float brightVal2;
-  float currentSensorValue = analogRead(photoPin);
+
+  float currentSensorValue = analogRead(SENSOR_PIN);
   mySensor.add(currentSensorValue);
-  brightVal = mySensor.get();
-  brightVal2 = brightVal;
-  //Serial.println(brightVal);
-  brightVal = map(brightVal, 4095, 2000, 0, 4095);
-  //Serial.println(brightVal);
-  if (brightVal2 > 2000) {
-    ledcWrite(0, brightVal);
+  float smoothedSensorValueAvg = mySensor.get();
+  brightVal = (int)smoothedSensorValueAvg;
+  brightVal2 = map(brightVal, 2000, 4095, 4095, 0);
+  Serial.println(brightVal);
+  if (brightVal > 2000) {
+    ledcWrite(pChannelMos, brightVal2);
   } else {
-    ledcWrite(0, 4095);
+    ledcWrite(pChannelMos, 4095);
   }
 }
+
+
+
+/*
+//------------- Algorithum for LEDS -----------
+
+void setDigitalPins(int value, int pin40, int pin20, int pin10, int pin8, int pin4, int pin2, int pin1) {
+  // Set pins for tens place
+  if (value >= 40) {
+    digitalWrite(pin40, LOW);
+    digitalWrite(pin20, HIGH);
+    digitalWrite(pin10, value >= 50 ? LOW : HIGH);
+  } else if (value >= 20) {
+    digitalWrite(pin40, HIGH);
+    digitalWrite(pin20, LOW);
+    digitalWrite(pin10, value >= 30 ? LOW : HIGH);
+  } else if (value >= 10) {
+    digitalWrite(pin40, HIGH);
+    digitalWrite(pin20, HIGH);
+    digitalWrite(pin10, LOW);
+  } else {
+    digitalWrite(pin40, HIGH);
+    digitalWrite(pin20, HIGH);
+    digitalWrite(pin10, HIGH);
+  }
+
+  // Set pins for units place
+  int unit = value % 10;
+  digitalWrite(pin8, unit >= 8 ? LOW : HIGH);
+  digitalWrite(pin4, (unit >= 4 && unit < 6) || (unit >= 8) ? LOW : HIGH);
+  digitalWrite(pin2, (unit >= 2 && unit < 4) || (unit >= 6 && unit < 8) ? LOW : HIGH);
+  digitalWrite(pin1, unit % 2 == 1 ? LOW : HIGH);
+}
+
+void updateDisplay(int hours, int minutes, int seconds) {
+  // Display hours
+  setDigitalPins(hours, hoursPin20, hoursPin10, hoursPin8, hoursPin4, hoursPin2, hoursPin1);
+
+  // Display minutes
+  setDigitalPins(minutes, minutesPin40, minutesPin20, minutesPin10, minutesPin8, minutesPin4, minutesPin2, minutesPin1);
+
+  // Display seconds
+  setDigitalPins(seconds, secondsPin40, secondsPin20, secondsPin10, secondsPin8, secondsPin4, secondsPin2, secondsPin1);
+}
+*/
 
 
 //------------ Display Function --------------
@@ -206,6 +256,8 @@ void displayLights() {
   int minutes = timeClient.getMinutes();
   int seconds = timeClient.getSeconds();
   //--------Automate the daylight saving time---------
+
+#define LEAP_YEAR(Y) ((Y > 0) && !(Y % 4) && ((Y % 100) || !(Y % 400)))
 
   //----------------Here is all the stolen code :) thanks arduino form!------------------
   unsigned long secs;
@@ -264,6 +316,18 @@ void displayLights() {
     hours = hours + 1;
     //Serial.println(hours);
   }
+
+  //updateDisplay(hours, minutes, seconds);
+
+
+
+
+
+
+
+
+
+
 
   //------DISPLAYS HOURS ON THE FIRST TWO COLUMS------
   if (hours >= 20) {
@@ -416,25 +480,16 @@ void displayLights() {
   }
 }
 
+
 void loop() {
-  //------Force an update for all of the following functions----
-  while (!timeClient.update()) {
-    timeClient.forceUpdate();
-  }
-
   //---------Determine if the reset wifi button is pressed------
-  //Change to a better call function
   button.loop();
-
   //--Serial communication for debugging--
-  //serialCOM();
-
+  serialCOM(); //Serial Data
   //----Set the brightness of the leds----
   brightness();
-
   //---Physically toggle the leds
   displayLights();
-
   //---Delay for stability/consistancy----
-  delay(10); //cannot delay due to it being a blocker
+  delay(10);  //cannot delay due to it being a blocker
 }
