@@ -23,6 +23,7 @@ bool res;
 //LED pins
 const byte hoursPin10 = 48;
 const byte hoursPin20 = 35;
+const byte hoursPin40 = 0;
 
 const byte hoursPin1 = 13;
 const byte hoursPin2 = 14;
@@ -48,6 +49,15 @@ const byte secondsPin2 = 5;
 const byte secondsPin4 = 6;
 const byte secondsPin8 = 7;
 
+const byte allPins[] = {
+    48, 35,    // hoursPin10, hoursPin20
+    13, 14, 21, 47, // hoursPin1, hoursPin2, hoursPin4, hoursPin8
+    10, 11, 12, // minutesPin10, minutesPin20, minutesPin40
+    18, 8, 3, 9, // minutesPin1, minutesPin2, minutesPin4, minutesPin8
+    15, 16, 17, // secondsPin10, secondsPin20, secondsPin40
+    4, 5, 6, 7 // secondsPin1, secondsPin2, secondsPin4, secondsPin8
+};
+
 #define BUTTON_PIN 42
 Button2 button;
 
@@ -62,11 +72,16 @@ const int resolution = 12;
 
 
 int hourOffset;
+#define LEAP_YEAR(Y) ((Y > 0) && !(Y % 4) && ((Y % 100) || !(Y % 400)))
 
 
 void handleTap(Button2& b) {
   // check for really long clicks
   if (b.wasPressedFor() > 2000) {
+    for (int i = 0; i < 20; i++)
+    {
+      digitalWrite(allPins[i], HIGH);
+    }
     wm.resetSettings();
     ESP.restart();
   }
@@ -92,28 +107,28 @@ void setup() {
   // Placeholder for the timezone offset variable
   // int utcOffsetInSeconds = getParam("customfieldid") * -3600;
 
-  std::vector<const char*> menu = { "wifi" }; //Selection for web
-  wm.setMenu(menu); //Menu
+  std::vector<const char*> menu = { "wifi" };  //Selection for web
+  wm.setMenu(menu);                            //Menu
 
   // set dark theme
-  wm.setClass("invert"); //dark mode :b
+  wm.setClass("invert");  //dark mode :b
 
-  mySensor.begin(SMOOTHED_AVERAGE, 8); //Setup the smoothing algo
+  mySensor.begin(SMOOTHED_AVERAGE, 8);  //Setup the smoothing algo
 
-  wm.setConnectTimeout(10); // Time out for the start connection
+  wm.setConnectTimeout(10);  // Time out for the start connection
 
   res = wm.autoConnect("Binary_Clock");  // anonymous ap/ set the name of the clock
   if (!res) {
-    Serial.println("Failed to connect"); //Failed to connect
+    Serial.println("Failed to connect");  //Failed to connect
     // ESP.restart();
   } else {
     //if you get here you have connected to the WiFi
-    Serial.println("connected...yeey :)"); // Connected succesfully
+    Serial.println("connected...yeey :)");  // Connected succesfully
   }
 
   hourOffset = preferences.getInt("timeZone", 0);
   //NPT Sever Setup
-  timeClient.begin(); //begin the ntp Client
+  timeClient.begin();  //begin the ntp Client
   //timeClient.setTimeOffset(utcOffsetInSeconds);
   //printLocalTime();
   timeClient.setTimeOffset(hourOffset * -3600);
@@ -125,26 +140,10 @@ void setup() {
   button.setTapHandler(handleTap);
 
   //Pin Modes For Leds
-  pinMode(hoursPin10, OUTPUT);
-  pinMode(hoursPin20, OUTPUT);
-  pinMode(hoursPin1, OUTPUT);
-  pinMode(hoursPin2, OUTPUT);
-  pinMode(hoursPin4, OUTPUT);
-  pinMode(hoursPin8, OUTPUT);
-  pinMode(minutesPin10, OUTPUT);
-  pinMode(minutesPin20, OUTPUT);
-  pinMode(minutesPin40, OUTPUT);
-  pinMode(minutesPin1, OUTPUT);
-  pinMode(minutesPin2, OUTPUT);
-  pinMode(minutesPin4, OUTPUT);
-  pinMode(minutesPin8, OUTPUT);
-  pinMode(secondsPin10, OUTPUT);
-  pinMode(secondsPin20, OUTPUT);
-  pinMode(secondsPin40, OUTPUT);
-  pinMode(secondsPin1, OUTPUT);
-  pinMode(secondsPin2, OUTPUT);
-  pinMode(secondsPin4, OUTPUT);
-  pinMode(secondsPin8, OUTPUT);
+  for (int i = 0; i < 20; i++)
+    {
+      digitalWrite(allPins[i], OUTPUT);
+    }
   ledcAttach(pChannelMos, freq, resolution);
   mySensor.clear();
 }
@@ -200,11 +199,10 @@ void brightness() {
   }
 }
 
-
-
-/*
 //------------- Algorithum for LEDS -----------
-
+// Algorithm to control a digital display of hours, minutes, and seconds
+// Citation: ChatGPT, OpenAI, 2024
+// Slightly modified by me to Work
 void setDigitalPins(int value, int pin40, int pin20, int pin10, int pin8, int pin4, int pin2, int pin1) {
   // Set pins for tens place
   if (value >= 40) {
@@ -233,19 +231,6 @@ void setDigitalPins(int value, int pin40, int pin20, int pin10, int pin8, int pi
   digitalWrite(pin1, unit % 2 == 1 ? LOW : HIGH);
 }
 
-void updateDisplay(int hours, int minutes, int seconds) {
-  // Display hours
-  setDigitalPins(hours, hoursPin20, hoursPin10, hoursPin8, hoursPin4, hoursPin2, hoursPin1);
-
-  // Display minutes
-  setDigitalPins(minutes, minutesPin40, minutesPin20, minutesPin10, minutesPin8, minutesPin4, minutesPin2, minutesPin1);
-
-  // Display seconds
-  setDigitalPins(seconds, secondsPin40, secondsPin20, secondsPin10, secondsPin8, secondsPin4, secondsPin2, secondsPin1);
-}
-*/
-
-
 //------------ Display Function --------------
 
 void displayLights() {
@@ -256,10 +241,7 @@ void displayLights() {
   int minutes = timeClient.getMinutes();
   int seconds = timeClient.getSeconds();
   //--------Automate the daylight saving time---------
-
-#define LEAP_YEAR(Y) ((Y > 0) && !(Y % 4) && ((Y % 100) || !(Y % 400)))
-
-  //----------------Here is all the stolen code :) thanks arduino form!------------------
+  //-----------Here is the stolen code I found on Github by @sheffieldnikki--------------
   unsigned long secs;
   unsigned long rawTime = (secs ? secs : timeClient.getEpochTime()) / 86400L;  // in days
   unsigned long days = 0, year = 1970;
@@ -317,167 +299,14 @@ void displayLights() {
     //Serial.println(hours);
   }
 
-  //updateDisplay(hours, minutes, seconds);
+  // Display hours
+  setDigitalPins(hours, hoursPin40, hoursPin20, hoursPin10, hoursPin8, hoursPin4, hoursPin2, hoursPin1);
 
+  // Display minutes
+  setDigitalPins(minutes, minutesPin40, minutesPin20, minutesPin10, minutesPin8, minutesPin4, minutesPin2, minutesPin1);
 
-
-
-
-
-
-
-
-
-
-  //------DISPLAYS HOURS ON THE FIRST TWO COLUMS------
-  if (hours >= 20) {
-    digitalWrite(hoursPin20, LOW);
-    digitalWrite(hoursPin10, HIGH);
-  } else if (hours >= 10) {
-    digitalWrite(hoursPin20, HIGH);
-    digitalWrite(hoursPin10, LOW);
-  } else {
-    digitalWrite(hoursPin20, HIGH);
-    digitalWrite(hoursPin10, HIGH);
-  }
-
-  int hoursUnit = hours % 10;
-  if (hoursUnit >= 8) {
-    digitalWrite(hoursPin8, LOW);
-    digitalWrite(hoursPin4, HIGH);
-    digitalWrite(hoursPin2, HIGH);
-  } else if (hoursUnit >= 6) {
-    digitalWrite(hoursPin8, HIGH);
-    digitalWrite(hoursPin4, LOW);
-    digitalWrite(hoursPin2, LOW);
-  } else if (hoursUnit >= 4) {
-    digitalWrite(hoursPin8, HIGH);
-    digitalWrite(hoursPin4, LOW);
-    digitalWrite(hoursPin2, HIGH);
-  } else if (hoursUnit >= 2) {
-    digitalWrite(hoursPin8, HIGH);
-    digitalWrite(hoursPin4, HIGH);
-    digitalWrite(hoursPin2, LOW);
-  } else {
-    digitalWrite(hoursPin8, HIGH);
-    digitalWrite(hoursPin4, HIGH);
-    digitalWrite(hoursPin2, HIGH);
-  }
-  if (hoursUnit % 2 == 1) {
-    digitalWrite(hoursPin1, LOW);
-  } else {
-    digitalWrite(hoursPin1, HIGH);
-  }
-
-  //-------- DISPLAYS MINUTES ON THE MIDDLE TWO COLUMS ------------
-  if (minutes >= 40) {
-    digitalWrite(minutesPin40, LOW);
-    digitalWrite(minutesPin20, HIGH);
-    if (minutes >= 50) {
-      digitalWrite(minutesPin10, LOW);
-    } else {
-      digitalWrite(minutesPin10, HIGH);
-    }
-  } else if (minutes >= 20) {
-    digitalWrite(minutesPin40, HIGH);
-    digitalWrite(minutesPin20, LOW);
-    if (minutes >= 30) {
-      digitalWrite(minutesPin10, LOW);
-    } else {
-      digitalWrite(minutesPin10, HIGH);
-    }
-  } else if (minutes >= 10) {
-    digitalWrite(minutesPin40, HIGH);
-    digitalWrite(minutesPin20, HIGH);
-    digitalWrite(minutesPin10, LOW);
-  } else {
-    digitalWrite(minutesPin40, HIGH);
-    digitalWrite(minutesPin20, HIGH);
-    digitalWrite(minutesPin10, HIGH);
-  }
-
-  int minutesUnit = minutes % 10;
-  if (minutesUnit >= 8) {
-    digitalWrite(minutesPin8, LOW);
-    digitalWrite(minutesPin4, HIGH);
-    digitalWrite(minutesPin2, HIGH);
-  } else if (minutesUnit >= 6) {
-    digitalWrite(minutesPin8, HIGH);
-    digitalWrite(minutesPin4, LOW);
-    digitalWrite(minutesPin2, LOW);
-  } else if (minutesUnit >= 4) {
-    digitalWrite(minutesPin8, HIGH);
-    digitalWrite(minutesPin4, LOW);
-    digitalWrite(minutesPin2, HIGH);
-  } else if (minutesUnit >= 2) {
-    digitalWrite(minutesPin8, HIGH);
-    digitalWrite(minutesPin4, HIGH);
-    digitalWrite(minutesPin2, LOW);
-  } else {
-    digitalWrite(minutesPin8, HIGH);
-    digitalWrite(minutesPin4, HIGH);
-    digitalWrite(minutesPin2, HIGH);
-  }
-  if (minutesUnit % 2 == 1) {
-    digitalWrite(minutesPin1, LOW);
-  } else {
-    digitalWrite(minutesPin1, HIGH);
-  }
-
-  //------------ DISPLAYS THE SECONDS ON THE LAST TWO COLUMS ----------
-  if (seconds >= 40) {
-    digitalWrite(secondsPin40, LOW);
-    digitalWrite(secondsPin20, HIGH);
-    if (seconds >= 50) {
-      digitalWrite(secondsPin10, LOW);
-    } else {
-      digitalWrite(secondsPin10, HIGH);
-    }
-  } else if (seconds >= 20) {
-    digitalWrite(secondsPin40, HIGH);
-    digitalWrite(secondsPin20, LOW);
-    if (seconds >= 30) {
-      digitalWrite(secondsPin10, LOW);
-    } else {
-      digitalWrite(secondsPin10, HIGH);
-    }
-  } else if (seconds >= 10) {
-    digitalWrite(secondsPin40, HIGH);
-    digitalWrite(secondsPin20, HIGH);
-    digitalWrite(secondsPin10, LOW);
-  } else {
-    digitalWrite(secondsPin40, HIGH);
-    digitalWrite(secondsPin20, HIGH);
-    digitalWrite(secondsPin10, HIGH);
-  }
-
-  int secondsUnit = seconds % 10;
-  if (secondsUnit >= 8) {
-    digitalWrite(secondsPin8, LOW);
-    digitalWrite(secondsPin4, HIGH);
-    digitalWrite(secondsPin2, HIGH);
-  } else if (secondsUnit >= 6) {
-    digitalWrite(secondsPin8, HIGH);
-    digitalWrite(secondsPin4, LOW);
-    digitalWrite(secondsPin2, LOW);
-  } else if (secondsUnit >= 4) {
-    digitalWrite(secondsPin8, HIGH);
-    digitalWrite(secondsPin4, LOW);
-    digitalWrite(secondsPin2, HIGH);
-  } else if (secondsUnit >= 2) {
-    digitalWrite(secondsPin8, HIGH);
-    digitalWrite(secondsPin4, HIGH);
-    digitalWrite(secondsPin2, LOW);
-  } else {
-    digitalWrite(secondsPin8, HIGH);
-    digitalWrite(secondsPin4, HIGH);
-    digitalWrite(secondsPin2, HIGH);
-  }
-  if (secondsUnit % 2 == 1) {
-    digitalWrite(secondsPin1, LOW);
-  } else {
-    digitalWrite(secondsPin1, HIGH);
-  }
+  // Display seconds
+  setDigitalPins(seconds, secondsPin40, secondsPin20, secondsPin10, secondsPin8, secondsPin4, secondsPin2, secondsPin1);
 }
 
 
@@ -485,7 +314,7 @@ void loop() {
   //---------Determine if the reset wifi button is pressed------
   button.loop();
   //--Serial communication for debugging--
-  serialCOM(); //Serial Data
+  serialCOM();  //Serial Data
   //----Set the brightness of the leds----
   brightness();
   //---Physically toggle the leds
