@@ -1,4 +1,4 @@
-![Screenshot](20240427_173329[1].png)
+![Screenshot](20240510_195017.jpg)
 
 # Tindie Page [Here](https://www.tindie.com/products/boredbuilder/binary-clock-v2)
 
