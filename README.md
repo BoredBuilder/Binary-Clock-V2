@@ -23,6 +23,6 @@ The binary-coded decimal display houses 20 LEDs to show 6-digit military time to
 Connect power on the right side of the clock with the included 12 volt power supply or a simple USB C cable. Once powered, get a phone or computer, go to wifi settings, and connect to the clock’s wifi. Once connected to the clock, it should redirect you to the clock’s web page where you can enter the wifi credentials of the home or work network you want to use. 
 If it doesn't redirect you, scan this QR code. 
 
-![Screenshot](QR Code Redirect.png)
+![Screenshot](QRCODE.png)
 
 After that select your respective US time zone and save. After a few seconds, the clock will turn green and display time.
