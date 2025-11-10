@@ -1,7 +1,5 @@
 ![Screenshot](20240510_194933.jpg)
 
-# Tindie Page [Here](https://www.tindie.com/products/boredbuilder/binary-clock-v2)
-
 # What makes it so special?
 The clock was designed and fabricated because I was inspired and curious the first time I saw one. I wanted to share this excitement with others, and after a year of development, I finally decided to release it.
 
