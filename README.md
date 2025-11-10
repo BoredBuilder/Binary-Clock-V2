@@ -1,8 +1,5 @@
 ![Screenshot](20240510_194933.jpg)
 
-# What makes it so special?
-The clock was designed and fabricated because I was inspired and curious the first time I saw one. I wanted to share this excitement with others, and after a year of development, I finally decided to release it.
-
 # Description
 The binary-coded decimal display houses 20 LEDs to show 6-digit military time to anyone who knows how to read it. The clock is easy to set up thanks to its onboard wireless esp32s3 chip by Expressif that also gathers time data to display on the LEDs.
 
